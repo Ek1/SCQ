@@ -2,7 +2,7 @@ local SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "0.0.190830.0025",
+	VERSION = "0.0.190830.0058",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -32,7 +32,6 @@ function SCQ.inGroup(_ , _, _, isLocalPlayer)
 end
 
 -- Following keeps track of the members that are in support range
-
 -- 100028 EVENT_GROUP_SUPPORT_RANGE_UPDATE (number eventCode, string unitTag, boolean status)
 function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 
@@ -45,7 +44,8 @@ function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 	d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE now " .. groupMembersInSupportRange .. "party members in support range")
 
 	if 0 < groupMembersInSupportRange then
-		ZO_PreHook(WORLD_MAP_QUEST_BREADCRUMBS, "OnQuestPositionRequestComplete", SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
+--		ZO_PreHook(WORLD_MAP_QUEST_BREADCRUMBS, "OnQuestPositionRequestComplete", SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
+		EVENT_MANAGER:RegisterForEvent(ADDON, "OnQuestPositionRequestComplete", SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE
 		d( SCQ.TITLE .. ": listening to EVENT_QUEST_POSITION_REQUEST_COMPLETE")
 	else
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE)
@@ -67,6 +67,15 @@ function SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE(self, taskId, pinType, xLoc, 
 		ShareQuest(journalQuestIndex)
 		d( SCQ.TITLE .. ": shared #" .. journalQuestIndex .. " " .. GetJournalQuestName(journalQuestIndex) )
 	end
+
+
+	-- Dirty quest sharing
+	for i=1, MAX_JOURNAL_QUESTS do
+		if GetIsQuestSharable(i) and IsJournalQuestInCurrentMapZone(i) then
+			ShareQuest(i)
+		end
+	end	-- Dirty quest sharing done
+
 end
 
 function SCQ.soloing(_ , _, _, isLocalPlayer)

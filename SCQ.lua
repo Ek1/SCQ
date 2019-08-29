@@ -2,7 +2,7 @@ local SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "0.0.190830.0014",
+	VERSION = "0.0.190830.0025",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -16,16 +16,23 @@ function SCQ.start()
 	d( SCQ.TITLE .. ": started. Listening EVENT_GROUP_MEMBER_JOINED")
 end
 
+local	groupMembersInSupportRange = 0
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.inGroup(_ , _, _, isLocalPlayer)
 	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED)
 	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE)
 	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT,	SCQ.soloing)
 	d( SCQ.TITLE .. ": inGroup, muting EVENT_GROUP_MEMBER_JOINED and listening EVENT_GROUP_SUPPORT_RANGE_UPDATE & EVENT_GROUP_MEMBER_LEFT.")
+
+	for i = 1, GetGroupSize() do
+		if isUnitInGroupSupportRange( GetGroupUnitTagByIndex(i) ) then
+			groupMembersInSupportRange = groupMembersInSupportRange + 1
+		end
+	end
 end
 
 -- Following keeps track of the members that are in support range
-local	groupMembersInSupportRange = 0
+
 -- 100028 EVENT_GROUP_SUPPORT_RANGE_UPDATE (number eventCode, string unitTag, boolean status)
 function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 
@@ -65,7 +72,7 @@ end
 function SCQ.soloing(_ , _, _, isLocalPlayer)
 
 	if isLocalPlayer then
-		groupMembersInSupportRange[0] = 0	-- Just making sure the counter resets some time
+		groupMembersInSupportRange = 0	-- Just making sure the counter resets
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT)
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE)
 		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED,	SCQ.inGroup)

@@ -2,7 +2,7 @@ local SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "0.0.190829.2257",
+	VERSION = "0.0.190829.2335",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -38,7 +38,7 @@ function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 	d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE now " .. groupMembersInSupportRange .. "party members in support range")
 
 	if 0 < groupMembersInSupportRange[0] then
-		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE,	SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
+		ZO_PreHook(WORLD_MAP_QUEST_BREADCRUMBS, "OnQuestPositionRequestComplete", SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
 		d( SCQ.TITLE .. ": listening to EVENT_QUEST_POSITION_REQUEST_COMPLETE")
 	else
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE)
@@ -47,9 +47,9 @@ function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 end
 
 -- 100028 EVENT_QUEST_POSITION_REQUEST_COMPLETE (number eventCode, number taskId, MapDisplayPinType pinType, number xLoc, number yLoc, number areaRadius, boolean insideCurrentMapWorld, boolean isBreadcrumb)
-function SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE(_, taskId, pinType, xLoc, yLoc, areaRadius, insideCurrentMapWorld, isBreadcrumb)
+function SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE(self, taskId, pinType, xLoc, yLoc, areaRadius, insideCurrentMapWorld, isBreadcrumb)
 
-	local conditionData = self.taskIdToConditionData[taskId] or {}
+	local conditionData = WORLD_MAP_QUEST_BREADCRUMBS.taskIdToConditionData[taskId] or {}
 	local journalQuestIndex, stepIndex, conditionIndex = conditionData.questIndex, conditionData.stepIndex, conditionData.conditionIndex
 
 	d( SCQ.TITLE .. ": EVENT_QUEST_POSITION_REQUEST_COMPLETE")

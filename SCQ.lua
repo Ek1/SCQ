@@ -2,7 +2,7 @@ local SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "0.0.190830.0009",
+	VERSION = "0.0.190830.0010",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -19,7 +19,7 @@ end
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.inGroup(_ , _, _, isLocalPlayer)
 	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED)
-	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
+	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE)
 	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT,	SCQ.soloing)
 	d( SCQ.TITLE .. ": inGroup, muting EVENT_GROUP_MEMBER_JOINED and listening EVENT_GROUP_SUPPORT_RANGE_UPDATE & EVENT_GROUP_MEMBER_LEFT.")
 end

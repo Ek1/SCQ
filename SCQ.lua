@@ -2,7 +2,7 @@ local SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "0.0.190829.2156",
+	VERSION = "0.0.190829.2257",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -18,28 +18,24 @@ end
 
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.inGroup(_ , _, _, isLocalPlayer)
-
-	if isLocalPlayer then
-		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED)
-		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
-		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT,	SCQ.soloing)
-		d( SCQ.TITLE .. ": inGroup, muting EVENT_GROUP_MEMBER_JOINED and listening EVENT_GROUP_SUPPORT_RANGE_UPDATE & EVENT_GROUP_MEMBER_LEFT.")
-	end
+	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED)
+	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
+	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT,	SCQ.soloing)
+	d( SCQ.TITLE .. ": inGroup, muting EVENT_GROUP_MEMBER_JOINED and listening EVENT_GROUP_SUPPORT_RANGE_UPDATE & EVENT_GROUP_MEMBER_LEFT.")
 end
 
 -- Following keeps track of the members that are in support range
-local	groupMembersInSupportRange = {}
-		groupMembersInSupportRange[0] = 0
+local	groupMembersInSupportRange = 0
 -- 100028 EVENT_GROUP_SUPPORT_RANGE_UPDATE (number eventCode, string unitTag, boolean status)
 function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 
 	if isSupporting then
-		groupMembersInSupportRange[0] = groupMembersInSupportRange[0] + 1
+		groupMembersInSupportRange = groupMembersInSupportRange + 1
 	else
-		groupMembersInSupportRange[0] = groupMembersInSupportRange[0] - 1
+		groupMembersInSupportRange = groupMembersInSupportRange - 1
 	end
 
-	d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE now " .. groupMembersInSupportRange[0] .. "party members in support range")
+	d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE now " .. groupMembersInSupportRange .. "party members in support range")
 
 	if 0 < groupMembersInSupportRange[0] then
 		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE,	SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
@@ -62,7 +58,6 @@ function SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE(_, taskId, pinType, xLoc, yLo
 		ShareQuest(journalQuestIndex)
 		d( SCQ.TITLE .. ": shared #" .. journalQuestIndex .. " " .. GetJournalQuestName(journalQuestIndex) )
 	end
-
 end
 
 function SCQ.soloing(_ , _, _, isLocalPlayer)

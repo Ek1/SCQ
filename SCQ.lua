@@ -2,7 +2,7 @@ local SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.0.190902.0255",
+	VERSION = "1.0.190902.1400",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -30,7 +30,6 @@ function SCQ.inGroup(_ , _, _, isLocalPlayer)
 		UnitTag = GetGroupUnitTagByIndex(i)
 		if IsUnitInGroupSupportRange( UnitTag ) then
 			groupMembersInSupportRange[0] = groupMembersInSupportRange[0] + 1
-			table.insert(groupMembersInSupportRange, unitTag)
 		end
 	end
 end
@@ -40,11 +39,13 @@ end
 function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 
 	if isSupporting then
-		table.insert(groupMembersInSupportRange, unitTag)
+		if groupMembersInSupportRange[0] < 0 then
+			groupMembersInSupportRange[0] = 1
+		else
 		groupMembersInSupportRange[0] = groupMembersInSupportRange[0] + 1
+		end
 	else
 		groupMembersInSupportRange[0] = groupMembersInSupportRange[0] - 1
-		table.remove(groupMembersInSupportRange, unitTag)
 	end
 
 	d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE now " .. groupMembersInSupportRange[0] .. "party members in support range")

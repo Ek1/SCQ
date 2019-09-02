@@ -2,7 +2,7 @@ local SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.0.190830.1011",
+	VERSION = "1.0.190902.0143",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -16,7 +16,8 @@ function SCQ.start()
 	d( SCQ.TITLE .. ": started. Listening EVENT_GROUP_MEMBER_JOINED")
 end
 
-local groupMembersInSupportRange = 0
+local groupMembersInSupportRange = {}
+groupMembersInSupportRange[0] = 0
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.inGroup(_ , _, _, isLocalPlayer)
 	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED)
@@ -24,9 +25,12 @@ function SCQ.inGroup(_ , _, _, isLocalPlayer)
 	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT,	SCQ.soloing)
 	d( SCQ.TITLE .. ": inGroup, muting EVENT_GROUP_MEMBER_JOINED and listening EVENT_GROUP_SUPPORT_RANGE_UPDATE & EVENT_GROUP_MEMBER_LEFT.")
 
+	local UnitTag = 0
 	for i = 1, GetGroupSize() do
-		if isUnitInGroupSupportRange( GetGroupUnitTagByIndex(i) ) then
-			groupMembersInSupportRange = groupMembersInSupportRange + 1
+		UnitTag = GetGroupUnitTagByIndex(i)
+		if IsUnitInGroupSupportRange( UnitTag ) then
+			groupMembersInSupportRange[0] = groupMembersInSupportRange[0] + 1
+			table.insert(groupMembersInSupportRange, unitTag)
 		end
 	end
 end
@@ -36,16 +40,18 @@ end
 function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 
 	if isSupporting then
-		groupMembersInSupportRange = groupMembersInSupportRange + 1
+		table.insert(groupMembersInSupportRange, unitTag)
+		groupMembersInSupportRange[0] = groupMembersInSupportRange[0] + 1
 	else
-		groupMembersInSupportRange = groupMembersInSupportRange - 1
+		groupMembersInSupportRange[0] = groupMembersInSupportRange[0] - 1
+		table.remove(groupMembersInSupportRange, unitTag)
 	end
 
-	d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE now " .. groupMembersInSupportRange .. "party members in support range")
+	d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE now " .. groupMembersInSupportRange[0] .. "party members in support range")
 
 	if 0 < groupMembersInSupportRange then
 --		ZO_PreHook(WORLD_MAP_QUEST_BREADCRUMBS, "OnQuestPositionRequestComplete", SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
-		EVENT_MANAGER:RegisterForEvent(ADDON, "OnQuestPositionRequestComplete", SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
+		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE, SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
 		d( SCQ.TITLE .. ": listening to EVENT_QUEST_POSITION_REQUEST_COMPLETE")
 	else
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE)
@@ -56,7 +62,9 @@ end
 -- 100028 EVENT_QUEST_POSITION_REQUEST_COMPLETE (number eventCode, number taskId, MapDisplayPinType pinType, number xLoc, number yLoc, number areaRadius, boolean insideCurrentMapWorld, boolean isBreadcrumb)
 function SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE(self, taskId, pinType, xLoc, yLoc, areaRadius, insideCurrentMapWorld, isBreadcrumb)
 
-	--[[ Attempt for precise quest sharing, redeemd 
+	SCQ.InnefficientSharing()
+
+	--[[ Attempt for precise quest sharing
 
 	local conditionData = WORLD_MAP_QUEST_BREADCRUMBS.taskIdToConditionData[taskId] or {}
 	local journalQuestIndex, stepIndex, conditionIndex = conditionData.questIndex, conditionData.stepIndex, conditionData.conditionIndex
@@ -70,20 +78,21 @@ function SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE(self, taskId, pinType, xLoc, 
 		d( SCQ.TITLE .. ": shared #" .. journalQuestIndex .. " " .. GetJournalQuestName(journalQuestIndex) )
 	end
 ]]
+end
 
+function SCQ.InnefficientSharing()
 	-- Dirty quest sharing
 	for i=1, MAX_JOURNAL_QUESTS do
 		if GetIsQuestSharable(i) and IsJournalQuestInCurrentMapZone(i) then
 			ShareQuest(i)
 		end
-	end	-- Dirty quest sharing done
-
-end
+	end
+end	-- Dirty quest sharing done
 
 function SCQ.soloing(_ , _, _, isLocalPlayer)
 
 	if isLocalPlayer then
-		groupMembersInSupportRange = 0	-- Just making sure the counter resets
+		groupMembersInSupportRange[0] = 0	-- Just making sure the counter resets
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT)
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE)
 		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED,	SCQ.inGroup)

@@ -16,7 +16,6 @@ function SCQ.start()
 	d( SCQ.TITLE .. ": started. Listening EVENT_GROUP_MEMBER_JOINED")
 end
 
-<<<<<<< HEAD
 local groupMembersInSupportRange = {}
 groupMembersInSupportRange[0] = 0
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)

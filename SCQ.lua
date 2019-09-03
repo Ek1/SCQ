@@ -2,7 +2,7 @@ local SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.0.190903.0126",
+	VERSION = "1.0.190903.0142",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -24,7 +24,7 @@ local myDisplayName = GetDisplayName()
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , _, memberDisplayName, isLocalPlayer)
 	if isLocalPlayer then
-		groupMembersInSupportRange[0] = 1
+		groupMembersInSupportRange[0] = 0
 		for i = 1, GetGroupSize() do
 			if IsUnitInGroupSupportRange( GetGroupUnitTagByIndex(i) ) then
 				groupMembersInSupportRange[0] = groupMembersInSupportRange[0] + 1
@@ -89,9 +89,15 @@ function SCQ.InnefficientSharing()
 	local journalQuestName = 0
 	for i = 1, GetNumJournalQuests() do
 		journalQuestName = GetJournalQuestName(i)
-		if not SharedQuests[journalQuestName] and GetIsQuestSharable(i) and IsJournalQuestInCurrentMapZone(i) then
-			ShareQuest(i)
-			SharedQuests[journalQuestName]
+
+		if SharedQuests[journalQuestName] then
+			d( SCQ.TITLE .. ": already shared before  #" .. i .. " " .. SharedQuests[journalQuestName])
+		else
+			if GetIsQuestSharable(i) and IsJournalQuestInCurrentMapZone(i) then
+				ShareQuest(i)
+				SharedQuests[journalQuestName]
+				d( SCQ.TITLE .. ": shared #" .. i .. " " .. journalQuestName )
+			end
 		end
 	end
 end	-- Dirty quest sharing done

@@ -1,8 +1,8 @@
-local SCQ = {
+SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.0.190903.0202",
+	VERSION = "1.0.190903.2129",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -119,7 +119,7 @@ function SCQ.Stop()
 	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE)
 	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT)
 
-	d( SCQ.TITLE .. ": stopped. Muting EVENT_GROUP_MEMBER_JOINED, EVENT_GROUP_SUPPORT_RANGE_UPDATE, EVENT_QUEST_POSITION_REQUEST_COMPLETE & EVENT_GROUP_MEMBER_LEFT")
+	d( SCQ.TITLE .. ": stopped. Deff to EVENT_GROUP_MEMBER_JOINED, EVENT_GROUP_SUPPORT_RANGE_UPDATE, EVENT_QUEST_POSITION_REQUEST_COMPLETE & EVENT_GROUP_MEMBER_LEFT")
 end
 
 -- Variable to keep count how many loads have been done before it was this ones turn.
@@ -131,7 +131,7 @@ function SCQ.GotLoaded(_, loadedAddOnName)
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_ADD_ON_LOADED)
 		SCQ.Start()
 	end
-	loadOrder = loadOrder+1
+	loadOrder = loadOrder + 1
 end
 
 -- Registering the SCQ's initializing event when add-on's are loaded 

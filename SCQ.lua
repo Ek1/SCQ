@@ -2,7 +2,7 @@ local SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.0.190903.0142",
+	VERSION = "1.0.190903.0202",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -20,7 +20,7 @@ end
 
 local SharedQuests = {}
 local groupMembersInSupportRange = {}
-local myDisplayName = GetDisplayName()
+-- local myDisplayName = GetDisplayName()
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , _, memberDisplayName, isLocalPlayer)
 	if isLocalPlayer then
@@ -95,7 +95,7 @@ function SCQ.InnefficientSharing()
 		else
 			if GetIsQuestSharable(i) and IsJournalQuestInCurrentMapZone(i) then
 				ShareQuest(i)
-				SharedQuests[journalQuestName]
+				SharedQuests[journalQuestName] = os.time()
 				d( SCQ.TITLE .. ": shared #" .. i .. " " .. journalQuestName )
 			end
 		end

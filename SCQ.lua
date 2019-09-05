@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.0.190905.2147",
+	VERSION = "1.0.190905.2215",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -18,7 +18,6 @@ function SCQ.Start()
 	d( SCQ.TITLE .. ": started. Listening to group size changes and when party member is close enough to support.")
 end
 
-local inParty = false
 local SharedQuests = {}
 
 -- API 100026	EVENT_QUEST_ADDED (number eventCode, number journalIndex, string questName, string objectiveName)
@@ -35,7 +34,6 @@ local groupMembersInSupportRange = 0
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , _, memberDisplayName, isLocalPlayer)
 	if isLocalPlayer then
-		inParty = true
 		groupMembersInSupportRange = 0
 		for i = 1, GetGroupSize() do
 			if IsUnitInGroupSupportRange( GetGroupUnitTagByIndex(i) ) then
@@ -54,11 +52,7 @@ end
 function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 
 	if isSupporting then
-		if groupMembersInSupportRange < 3 then
-			groupMembersInSupportRange = 2
-		else
-			groupMembersInSupportRange = groupMembersInSupportRange + 1
-		end
+		groupMembersInSupportRange = groupMembersInSupportRange + 1
 	else
 		groupMembersInSupportRange = groupMembersInSupportRange - 1
 	end

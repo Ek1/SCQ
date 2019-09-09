@@ -1,4 +1,5 @@
 ## Title: Share contributable quests
+## Description: Shares quests to party members that can contribute to the quest.
 ## APIVersion: 100028 100029
 ## Version: 1.0.0
 ## Author: Ek1

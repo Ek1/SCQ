@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.0.190909.2013",
+	VERSION = "1.0.190909.2018",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -60,7 +60,7 @@ function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 		end
 	else
 		groupMembersInSupportRange = groupMembersInSupportRange - 1
-		if groupMembersInSupportRange < 1 then	-- Player is always in supprot range of himself
+		if groupMembersInSupportRange < 1 then	-- Player is always in support range of self
 			groupMembersInSupportRange = 1
 		end
 	end

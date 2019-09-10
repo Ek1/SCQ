@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.0.190909.2258",
+	VERSION = "1.0.190909.1305",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -54,7 +54,7 @@ function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 	if isSupporting then
 		local GroupSize = GetGroupSize()
 
-		if GroupSize < groupMembersInSupportRange then
+		if GroupSize <= groupMembersInSupportRange then
 			groupMembersInSupportRange = GroupSize
 		else
 			groupMembersInSupportRange = groupMembersInSupportRange + 1

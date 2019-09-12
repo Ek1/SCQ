@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.0.190909.2018",
+	VERSION = "1.0.190913.2229",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -33,13 +33,16 @@ local groupMembersInSupportRange = 0
 -- local myDisplayName = GetDisplayName()
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , _, memberDisplayName, isLocalPlayer)
+
+	groupMembersInSupportRange = groupMembersInSupportRange + 1
+
 	if isLocalPlayer then
-		groupMembersInSupportRange = 0
+--[[		groupMembersInSupportRange = 0
 		for i = 1, GetGroupSize() do
 			if IsUnitInGroupSupportRange( GetGroupUnitTagByIndex(i) ) then
 				groupMembersInSupportRange = groupMembersInSupportRange + 1
 			end
-		end
+		end]]
 		d( ADDON .. ": joined a group.")
 	else
 		SharedQuests = {}
@@ -123,8 +126,11 @@ end	-- Dirty quest sharing done
 -- 100028 EVENT_GROUP_MEMBER_LEFT (number eventCode, string memberCharacterName, GroupLeaveReason reason, boolean isLocalPlayer, boolean isLeader, string memberDisplayName, boolean actionRequiredVote)
 function SCQ.EVENT_GROUP_MEMBER_LEFT(_ , memberCharacterName, GroupLeaveReason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
 
+	groupMembersInSupportRange = groupMembersInSupportRange - 1
+
 	if isLocalPlayer then
 		d( ADDON .. ": soloing.")
+		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE)
 	else
 		d( ADDON .. ": " .. ZO_LinkHandler_CreateDisplayNameLink(memberDisplayName)  .. " left the group.")
 	end

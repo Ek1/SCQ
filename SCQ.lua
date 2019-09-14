@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.0.190913.2229",
+	VERSION = "1.0.190914.0456",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -29,24 +29,30 @@ function SCQ.EVENT_QUEST_ADDED (_, journalIndex, questName, objectiveName)
 	end
 end
 
-local groupMembersInSupportRange = 0
+local playerUnitTag
+local groupMembersInSupportRange
 -- local myDisplayName = GetDisplayName()
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , _, memberDisplayName, isLocalPlayer)
 
-	groupMembersInSupportRange = groupMembersInSupportRange + 1
-
 	if isLocalPlayer then
---[[		groupMembersInSupportRange = 0
-		for i = 1, GetGroupSize() do
-			if IsUnitInGroupSupportRange( GetGroupUnitTagByIndex(i) ) then
-				groupMembersInSupportRange = groupMembersInSupportRange + 1
-			end
-		end]]
 		d( ADDON .. ": joined a group.")
 	else
 		SharedQuests = {}
 		d( ADDON .. ": " .. ZO_LinkHandler_CreateDisplayNameLink(memberDisplayName)  .. " joined the group.")
+	end
+
+	groupMembersInSupportRange = 0
+	for i = 1, GetGroupSize() do
+
+		local selectedUnitTag = GetGroupUnitTagByIndex(i)
+
+		if IsUnitInGroupSupportRange( selectedUnitTag ) then
+			groupMembersInSupportRange = groupMembersInSupportRange + 1
+		end
+		if IsUnitPlayer(selectedUnitTag) then
+			playerUnitTag = selectedUnitTag
+		end
 	end
 end
 
@@ -63,7 +69,7 @@ function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 		end
 	else
 		groupMembersInSupportRange = groupMembersInSupportRange - 1
-		if groupMembersInSupportRange < 1 then	-- Player is always in support range of self
+		if groupMembersInSupportRange < 1 then	-- Player is always in support range of himself
 			groupMembersInSupportRange = 1
 		end
 	end
@@ -101,20 +107,26 @@ function SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE(self, taskId, pinType, xLoc, 
 ]]
 end
 
-function SCQ.InnefficientSharing()
 	-- Dirty quest sharing
-	local journalQuestName = "testing"
-	for i = 1, GetNumJournalQuests() do
-		journalQuestName = GetJournalQuestName(i)
+function SCQ.InnefficientSharing()
 
+	local journalQuestName
+	local playersCurrentZoneIndex = GetUnitZoneIndex(playerUnitTag)	-- Where we are now
+
+	for i = 1, GetNumJournalQuests() do
+		local journalQuestName = GetJournalQuestName(i)
 		if SharedQuests[journalQuestName] then
 --			d( ADDON .. ": already shared before  #" .. i .. " " .. journalQuestName)
 		else
 			if GetIsQuestSharable(i) then
-				if IsJournalQuestInCurrentMapZone(i) then
+
+				local journalQuestLocationZoneName, objectiveName, journalQuestLocationZoneIndex, poiIndex =	GetJournalQuestLocationInfo(i)
+				local JournalQuestStartingZoneIndex = GetJournalQuestStartingZone(i)
+
+				if playersCurrentZoneIndex == journalQuestLocationZoneName or playersCurrentZoneIndex == JournalQuestStartingZoneIndex then
 					ShareQuest(i)
 					SharedQuests[journalQuestName] = os.time()
-					d( ADDON .. ": shared #" .. i .. " " .. journalQuestName )
+					d( ADDON .. ": shared #" .. i .. " " .. journalQuestName .. " that locates in " .. GetZoneNameByIndex(playersZoneIndex))
 				end
 			else
 				SharedQuests[journalQuestName] = os.time()
@@ -126,11 +138,10 @@ end	-- Dirty quest sharing done
 -- 100028 EVENT_GROUP_MEMBER_LEFT (number eventCode, string memberCharacterName, GroupLeaveReason reason, boolean isLocalPlayer, boolean isLeader, string memberDisplayName, boolean actionRequiredVote)
 function SCQ.EVENT_GROUP_MEMBER_LEFT(_ , memberCharacterName, GroupLeaveReason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
 
-	groupMembersInSupportRange = groupMembersInSupportRange - 1
-
 	if isLocalPlayer then
 		d( ADDON .. ": soloing.")
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE)
+		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT)
 	else
 		d( ADDON .. ": " .. ZO_LinkHandler_CreateDisplayNameLink(memberDisplayName)  .. " left the group.")
 	end

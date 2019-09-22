@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.1.190916.0355",
+	VERSION = "1.1.190922.0339",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -60,12 +60,15 @@ end
 -- 100028 EVENT_GROUP_SUPPORT_RANGE_UPDATE (number eventCode, string unitTag, boolean status)
 function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 
-	local GroupSize = GetGroupSize()
+	local GroupSize = GetGroupSize() or 1
+	if not groupMembersInSupportRange then
+		groupMembersInSupportRange = 1
+	end
 
 	if isSupporting then
-		groupMembersInSupportRange = groupMembersInSupportRange + 1
+		groupMembersInSupportRange = groupMembersInSupportRange + 1 or 2
 		if GroupSize and GroupSize < groupMembersInSupportRange then	-- There can't be more people supporting than there are members in group
-			groupMembersInSupportRange = GroupSize
+			groupMembersInSupportRange = GroupSize or 2
 		end
 	else
 		groupMembersInSupportRange = groupMembersInSupportRange - 1
@@ -86,10 +89,11 @@ function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 	end
 end
 
+local playersCurrentZoneIndex = GetUnitZoneIndex("player") or -1
 -- 100028 EVENT_QUEST_POSITION_REQUEST_COMPLETE (number eventCode, number taskId, MapDisplayPinType pinType, number xLoc, number yLoc, number areaRadius, boolean insideCurrentMapWorld, boolean isBreadcrumb)
 function SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE(self, taskId, pinType, xLoc, yLoc, areaRadius, insideCurrentMapWorld, isBreadcrumb)
 
-	if DoesCurrentMapMatchMapForPlayerLocation() then
+	if insideCurrentMapWorld and DoesCurrentMapMatchMapForPlayerLocation() then
 		SCQ.InnefficientSharing()
 	end
 
@@ -113,8 +117,8 @@ end
 function SCQ.InnefficientSharing()
 
 	local journalQuestName
-	local playersCurrentZoneIndex = GetUnitZoneIndex(playerUnitTag)	-- Where we are now
-	-- d( ADDON .. ": playersCurrentZoneIndex = " .. playersCurrentZoneIndex)
+	local playersCurrentZoneIndex = GetUnitZoneIndex("player")	-- Where we are now
+	d( ADDON .. ": playersCurrentZoneIndex = " .. playersCurrentZoneIndex)
 
 	for i = 1, GetNumJournalQuests() do
 		local journalQuestName = GetJournalQuestName(i)
@@ -167,6 +171,7 @@ function SCQ.GotLoaded(_, loadedAddOnName)
 	--	Seems it is our time so lets stop listening load trigger and initialize the add-on
 		d( SCQ.TITLE .. " (" .. ADDON .. ")".. ": load order " ..  loadOrder .. ", starting")
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_ADD_ON_LOADED)
+
 		SCQ.Start()
 	end
 	loadOrder = loadOrder + 1
@@ -175,8 +180,9 @@ end
 -- Registering the SCQ's initializing event when add-on's are loaded 
 EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_ADD_ON_LOADED, SCQ.GotLoaded)
 
---[[	Possible implementantion choices
+--[[	Possible implementantion methods
 	
+SafeAddString(SI_JOURNAL_MENU_QUESTS, "Quests", 0)
 
 GetGroupLeaderUnitTag()
 Returns: string leaderUnitTag

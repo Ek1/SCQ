@@ -2,11 +2,11 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.1.190925.1434",
+	VERSION = "1.1.191005.1855",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
-local ADDON = "SCQ"	-- Codereview friendly referce to this add-on.
+local ADDON = "SCQ"	-- Codereview friendly reference to this add-on.
 
 -- Starting to do magic
 function SCQ.Start()
@@ -29,7 +29,7 @@ function SCQ.EVENT_QUEST_ADDED (_, journalIndex, questName, objectiveName)
 	end
 end
 
-local groupMembersInSupportRange	-- 
+local groupMembersInSupportRange
 
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , _, memberDisplayName, isLocalPlayer)
@@ -39,10 +39,13 @@ function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , _, memberDisplayName, isLocalPlayer)
 
 	if isLocalPlayer then
 		d( ADDON .. ": joined a group.")
+		SharedQuests = {}
 	else
 		SharedQuests = {}
 		d( ADDON .. ": " .. ZO_LinkHandler_CreateDisplayNameLink(memberDisplayName)  .. " joined the group.")
 	end
+
+	SCQ.fixMembersInSupportRange()
 end
 
 --	EVENT_GROUP_MEMBER_CONNECTED_STATUS (number eventCode, string unitTag, boolean isOnline)

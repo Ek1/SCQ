@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.1.191005.1855",
+	VERSION = "1.2.191016",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -13,39 +13,47 @@ function SCQ.Start()
 
 	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED,	SCQ.EVENT_GROUP_MEMBER_JOINED)
 	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED,	SCQ.EVENT_PLAYER_ACTIVATED)
-	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE)
 	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT,	SCQ.EVENT_GROUP_MEMBER_LEFT)
+	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_CONNECTED_STATUS,	SCQ.EVENT_GROUP_MEMBER_CONNECTED_STATUS)
 
 	d( ADDON .. ": started. Listening to group size changes and when party member is close enough to support.")
 end
 
-local SharedQuests = {}
--- API 100026	EVENT_QUEST_ADDED (number eventCode, number journalIndex, string questName, string objectiveName)
-function SCQ.EVENT_QUEST_ADDED (_, journalIndex, questName, objectiveName)
-	if GetIsQuestSharable(journalIndex) then
-		SharedQuests = {}
-	else
-		SharedQuests[questName] = os.time()	-- If it can't be shared, don't bother trying to share it anyway
-	end
-end
-
-local groupMembersInSupportRange
+local supportingThereshold = 2/7
+local sharedQuests = {}
+local membersSupporting = 0
 
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
-function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , _, memberDisplayName, isLocalPlayer)
+function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , memberCharacterName, memberDisplayName, isLocalPlayer)
 
-	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE)
-	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_CONNECTED_STATUS,	SCQ.EVENT_GROUP_MEMBER_CONNECTED_STATUS)
+	sharedQuests = {}
 
 	if isLocalPlayer then
-		d( ADDON .. ": joined a group.")
-		SharedQuests = {}
+		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE)
+		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_QUEST_ADDED,	SCQ.EVENT_QUEST_ADDED)
+		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED,	SCQ.EVENT_PLAYER_ACTIVATED)
+		d( ADDON .. ": You joined a group with Your " .. zo_strformat("<<1>>", memberCharacterName) .. " consisting of " .. zo_strformat("<<n:1>>", GetGroupSize() ) .. " brave adventurers  ")
 	else
-		SharedQuests = {}
-		d( ADDON .. ": " .. ZO_LinkHandler_CreateDisplayNameLink(memberDisplayName)  .. " joined the group.")
+		d( ADDON .. ": " .. ZO_LinkHandler_CreateLinkWithoutBrackets(memberDisplayName, nil, CHARACTER_LINK_TYPE, memberDisplayName)  .. " joined the group with " .. zo_strformat("<<1>>", memberCharacterName) .. " making us " .. zo_strformat("<<n:1>>", GetGroupSize() ) .. " undaunted adventurers" )
 	end
 
 	SCQ.fixMembersInSupportRange()
+	if supportingThereshold <= ( membersSupporting / GetGroupSize() ) then
+		SCQ.targetedQuestSharing(	GetUnitZoneIndex("player")	)
+	end
+end
+
+-- API 100026	EVENT_QUEST_ADDED (number eventCode, number journalIndex, string questName, string objectiveName)
+function SCQ.EVENT_QUEST_ADDED (_, journalIndex, questName, objectiveName)
+	if GetIsQuestSharable(journalIndex) then
+		sharedQuests = {}
+	else
+		sharedQuests[questName] = os.time()	-- If it can't be shared, don't bother trying to share it anyway
+	end
+
+	if supportingThereshold <= ( membersSupporting / GetGroupSize() ) then
+		SCQ.targetedQuestSharing(	GetUnitZoneIndex("player")	)
+	end
 end
 
 --	EVENT_GROUP_MEMBER_CONNECTED_STATUS (number eventCode, string unitTag, boolean isOnline)
@@ -56,16 +64,19 @@ end
 --	EVENT_PLAYER_ACTIVATED (number eventCode, boolean initial)
 function SCQ.EVENT_PLAYER_ACTIVATED(_, _)
 	SCQ.fixMembersInSupportRange()
+	if supportingThereshold <= ( membersSupporting / GetGroupSize() ) then
+		SCQ.targetedQuestSharing(	GetUnitZoneIndex("player")	)
+	end
 end
 
---	Inefficient support range checker that nees to be done when exiting loading screen as EVENT_GROUP_SUPPORT_RANGE_UPDATE is not updated then
+
+--	Inefficient support range checker that needs to be done when exiting loading screen as EVENT_GROUP_SUPPORT_RANGE_UPDATE is not updated then
 function SCQ.fixMembersInSupportRange()
-	local GroupSize = GetGroupSize() or 0
-	groupMembersInSupportRange = 0
-	if 0 < GroupSize then
-		for i = 1, GroupSize do
-			if IsUnitInGroupSupportRange( GetGroupUnitTagByIndex(i) ) then
-				groupMembersInSupportRange = groupMembersInSupportRange + 1
+	membersSupporting = 0
+	if 0 < GetGroupSize() then
+		for i = 1, GetGroupSize() do
+			if IsUnitInGroupSupportRange(	GetGroupUnitTagByIndex(i)	) then
+				membersSupporting = membersSupporting + 1
 			end
 		end
 	end
@@ -75,128 +86,86 @@ end
 -- 100028 EVENT_GROUP_SUPPORT_RANGE_UPDATE (number eventCode, string unitTag, boolean status)
 function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 
-	if not groupMembersInSupportRange then
-		groupMembersInSupportRange = 0
+	if not membersSupporting then
+		membersSupporting = 0
 	end
-	
-	local GroupSize = GetGroupSize() or 2	-- 
-	--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE " .. groupMembersInSupportRange .. "/" .. GroupSize .. " party members in support range before check")
+	--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE " .. membersSupporting .. "/" .. GetGroupSize() .. " party members in support range before check")
 
 	if isSupporting then
-		groupMembersInSupportRange = groupMembersInSupportRange + 1
-		--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE updated to " .. groupMembersInSupportRange .. "/" .. GroupSize .. " party members in support range")
-		if GroupSize and GroupSize < groupMembersInSupportRange then	-- There can't be more people supporting than there are members in group
-			groupMembersInSupportRange = GroupSize or 2
-			--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE fixed to " .. groupMembersInSupportRange .. "/" .. GroupSize .. " party members in support range")
+		membersSupporting = 1 + membersSupporting or 2
+		--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE updated to " .. membersSupporting .. "/" .. GetGroupSize() .. " party members in support range")
+		if GetGroupSize() < membersSupporting then	-- There can't be more people supporting than there are members in group
+			membersSupporting = GetGroupSize() or 2
+			--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE fixed to " .. membersSupporting .. "/" .. GetGroupSize() .. " party members in support range")
 		end
 	else
-		groupMembersInSupportRange = groupMembersInSupportRange - 1
-		--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE updated to " .. groupMembersInSupportRange .. "/" .. GroupSize .. " party members in support range")
-		if groupMembersInSupportRange < 1 then	-- Player is always in support range of himself
-			groupMembersInSupportRange = 1
-			--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE fixed to " .. groupMembersInSupportRange .. "/" .. GroupSize .. " party members in support range")
+		membersSupporting = membersSupporting - 1 or 1
+		--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE updated to " .. membersSupporting .. "/" .. group[0] .. " party members in support range")
+		if membersSupporting < 1 then	-- Player is always in support range of himself
+			membersSupporting = 1
+			--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE fixed to " .. membersSupporting .. "/" .. group[0] .. " party members in support range")
 		end
-	end
-
-
-	if 2 <= groupMembersInSupportRange then
-	-- ZO_PreHook(WORLD_MAP_QUEST_BREADCRUMBS, "OnQuestPositionRequestComplete", SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
-		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE, SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE)
-		--d( ADDON .. ": listening to EVENT_QUEST_POSITION_REQUEST_COMPLETE")
-	else
-		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE)
-		--d( ADDON .. ": muting EVENT_QUEST_POSITION_REQUEST_COMPLETE")
 	end
 end
 
-local playersCurrentZoneIndex = GetUnitZoneIndex("player") or -1
--- 100028 EVENT_QUEST_POSITION_REQUEST_COMPLETE (number eventCode, number taskId, MapDisplayPinType pinType, number xLoc, number yLoc, number areaRadius, boolean insideCurrentMapWorld, boolean isBreadcrumb)
-function SCQ.EVENT_QUEST_POSITION_REQUEST_COMPLETE(self, taskId, pinType, xLoc, yLoc, areaRadius, insideCurrentMapWorld, isBreadcrumb)
+-- Quests in target zone sharing
+-- Optionally takes int_ZoneIndex and int_questRepeatType as arguments for more specific sahres
+function SCQ.targetedQuestSharing( targetZoneIndex, questRepeatTypeFromZeroToTwo)
 
-	if insideCurrentMapWorld and GetUnitZoneIndex("player") ~= playersCurrentZoneIndex then
-		--d(taskId)
-		playersCurrentZoneIndex = GetUnitZoneIndex("player")
-		SCQ.InnefficientSharing(playersCurrentZoneIndex)
-		--d( ADDON .. ": currentZoneIndex = " .. playersCurrentZoneIndex)
+	if targetZoneIndex == nil then
+		targetZoneIndex = GetUnitZoneIndex("player")	-- If not target was given, presume target is players zone
 	end
+	local questRepeatTypeMinimumToShare = questRepeatTypeFromZeroToTwo or 0	-- if no limit was given, presume everything is wanted
 
-	--[[ Attempt for precise quest sharing
-
-	local conditionData = WORLD_MAP_QUEST_BREADCRUMBS.taskIdToConditionData[taskId] or {}
-	local journalQuestIndex, stepIndex, conditionIndex = conditionData.questIndex, conditionData.stepIndex, conditionData.conditionIndex
-
-
-
-	ZO_PreHook(WORLD_MAP_QUEST_BREADCRUMBS, "OnQuestPositionRequestComplete", function(self, taskId)
-		local conditionData = self.taskIdToConditionData[taskId]
-	end)
-
-	local function GetTaskIdFor(questIndex, stepIndex, conditionIndex)
-		for taskId, conditionData in pairs(WORLD_MAP_QUEST_BREADCRUMBS.taskIdToConditionData) do
-			if(conditionData.questIndex == questIndex and conditionData.stepIndex == stepIndex and conditionData.conditionIndex == conditionIndex) then
-				return taskId
-			end
-		end
-		return nil
-	end
-
-	local taskId = WORLD_MAP_QUEST_BREADCRUMBS:RequestConditionPosition(questIndex, stepIndex, conditionIndex)
-
-
-
-]]
-end
-
-	-- Dirty quest sharing
-function SCQ.InnefficientSharing( targetZoneIndex )
-
-	local journalQuestName
+	local sharedQuests = {}
 
 	for i = 1, GetNumJournalQuests() do
-		local journalQuestName = GetJournalQuestName(i)
-		if SharedQuests[journalQuestName] then
-		--d( ADDON .. ": already shared before  #" .. i .. " " .. journalQuestName)
-		else
-			if GetIsQuestSharable(i) then
+
+		if GetIsQuestSharable(i) then	-- If it can't be shared, don't even bother
+
+			if questRepeatTypeMinimumToShare <= GetJournalQuestRepeatType(i) then
 
 				local journalQuestLocationZoneName, objectiveName, journalQuestLocationZoneIndex, poiIndex =	GetJournalQuestLocationInfo(i)
 				local JournalQuestStartingZoneIndex = GetJournalQuestStartingZone(i)
 
 				if targetZoneIndex == journalQuestLocationZoneName or targetZoneIndex == JournalQuestStartingZoneIndex then
 					ShareQuest(i)
-					SharedQuests[journalQuestName] = os.time()
-					d( ADDON .. ": shared #" .. i .. " " .. journalQuestName .. " that locates in " .. journalQuestLocationZoneName)
+					d( ADDON .. ": shared #" .. i .. " " .. GetJournalQuestName(i) .. " that locates in " .. journalQuestLocationZoneName)
+					local indexTarget = GetJournalQuestName(1)
+					sharedQuests[indexTarget] = os.time()
 				end
-			else
-				SharedQuests[journalQuestName] = os.time()
 			end
 		end
 	end
-end	-- Dirty quest sharing done
+end	-- Quests in target zone sharing
+
 
 -- 100028 EVENT_GROUP_MEMBER_LEFT (number eventCode, string memberCharacterName, GroupLeaveReason reason, boolean isLocalPlayer, boolean isLeader, string memberDisplayName, boolean actionRequiredVote)
 function SCQ.EVENT_GROUP_MEMBER_LEFT(_ , memberCharacterName, GroupLeaveReason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
 
 	if isLocalPlayer then
-		d( ADDON .. ": soloing.")
-		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE)
+		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_ADDED)
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT)
-		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE)
-		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED,	SCQ.EVENT_GROUP_MEMBER_JOINED)
+		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED)
+		d( ADDON .. ": Now soloing.")
 	else
-		d( ADDON .. ": " .. ZO_LinkHandler_CreateDisplayNameLink(memberDisplayName)  .. " left the group.")
+		d( ADDON .. ": " .. ZO_LinkHandler_CreateLinkWithoutBrackets(memberDisplayName, nil, CHARACTER_LINK_TYPE, memberDisplayName) .. " left the group with " .. zo_strformat("<<1>>", memberCharacterName)	)
 	end
 end
 
+-- Kill the add-on if needed for some reason. Also a list of stuff that needs to be remembered.
 function SCQ.Stop()
+
+	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_ADDED)
 
 	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED)
 	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE)
-	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_POSITION_REQUEST_COMPLETE)
 	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_CONNECTED_STATUS)
 	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT)
 
-	d( ADDON .. ": stopped. Deff to EVENT_GROUP_MEMBER_JOINED, EVENT_GROUP_SUPPORT_RANGE_UPDATE, EVENT_QUEST_POSITION_REQUEST_COMPLETE & EVENT_GROUP_MEMBER_LEFT")
+	EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED)
+
+	d( ADDON .. ": stopped")
 end
 
 -- Variable to keep count how many loads have been done before it was this ones turn.

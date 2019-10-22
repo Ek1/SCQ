@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.3.191021",
+	VERSION = "1.3.191022",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -41,6 +41,7 @@ function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , memberCharacterName, memberDisplayNam
 	SCQ.fixMembersInSupportRange()
 
 	delayBeforeSharing = groupMembers[GetDisplayName()] * GetLatency()	-- Use latency as multiplier to push back sharing to have somekind of logic what quest comletion to have among members. With 150ms latency it means last member in party waits for 3,6 seconds until sharing quests.
+	--d( ADDON .. ": delay before sharing " ..delayBeforeSharing)
 
 	if doSharing and supported then
 		zo_callLater( SCQ.TargetedQuestSharing( GetUnitZoneIndex("player") ), delayBeforeSharing )
@@ -128,8 +129,13 @@ function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 
 	if 1 < membersSupporting[0] then
 		supported = true
-	else 
+	else
 		supported = false
+	end
+
+	if doSharing and supported then
+		SCQ.TargetedQuestSharing( GetUnitZoneIndex("player") )
+		doSharing = false
 	end
 end
 

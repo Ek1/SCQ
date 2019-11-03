@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.3.191022",
+	VERSION = "1.3.191103",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -11,10 +11,10 @@ local ADDON = "SCQ"	-- Codereview friendly reference to this add-on.
 -- Starting to do magic
 function SCQ.Start()
 
-	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED,	SCQ.EVENT_GROUP_MEMBER_JOINED)
-	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED,	SCQ.EVENT_PLAYER_ACTIVATED)
-	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT,	SCQ.EVENT_GROUP_MEMBER_LEFT)
-	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_CONNECTED_STATUS,	SCQ.EVENT_GROUP_MEMBER_CONNECTED_STATUS)
+	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED,	SCQ.SCQ_GROUP_MEMBER_JOINED)
+	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED,	SCQ.SCQ_PLAYER_ACTIVATED)
+	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT,	SCQ.SCQ_GROUP_MEMBER_LEFT)
+	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_CONNECTED_STATUS,	SCQ.SCQ_GROUP_MEMBER_CONNECTED_STATUS)
 
 	d( ADDON .. ": started. Listening to group size changes and when party member is close enough to support.")
 end
@@ -26,22 +26,25 @@ local doSharing = false
 local delayBeforeSharing = 500
 
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
-function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , memberCharacterName, memberDisplayName, isLocalPlayer)
+function SCQ.SCQ_GROUP_MEMBER_JOINED(_ , memberCharacterName, memberDisplayName, isLocalPlayer)
+
+	supported = false
 
 	if isLocalPlayer then
-		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE)
-		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_QUEST_ADDED,	SCQ.EVENT_QUEST_ADDED)
-		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED,	SCQ.EVENT_PLAYER_ACTIVATED)
+		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.SCQ_GROUP_SUPPORT_RANGE_UPDATE)
+		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_QUEST_ADDED,	SCQ.SCQ_QUEST_ADDED)
+		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED,	SCQ.SCQ_PLAYER_ACTIVATED)
 		d( ADDON .. ": You joined a group with Your " .. zo_strformat("<<1>>", memberCharacterName) .. " consisting of " .. zo_strformat("<<n:1>>", GetGroupSize() ) .. " brave adventurers  ")
 	else
-		d( ADDON .. ": " .. ZO_LinkHandler_CreateLinkWithoutBrackets(memberDisplayName, nil, CHARACTER_LINK_TYPE, memberDisplayName)  .. " joined the group with " .. zo_strformat("<<1>>", memberCharacterName) .. " making us " .. zo_strformat("<<n:1>>", GetGroupSize() ) .. " undaunted adventurers" )
-		doSharing = true
+		d( ADDON .. ": " .. ZO_LinkHandler_CreateLinkWithoutBrackets(memberDisplayName, nil, CHARACTER_LINK_TYPE, memberDisplayName) .. " joined the group with " .. zo_strformat("<<1>>", memberCharacterName) .. " making us " .. zo_strformat("<<n:1>>", GetGroupSize() ) .. " undaunted adventurers" )
 	end
+
+	doSharing = true
 
 	SCQ.fixMembersInSupportRange()
 
 	delayBeforeSharing = groupMembers[GetDisplayName()] * GetLatency()	-- Use latency as multiplier to push back sharing to have somekind of logic what quest comletion to have among members. With 150ms latency it means last member in party waits for 3,6 seconds until sharing quests.
-	--d( ADDON .. ": delay before sharing " ..delayBeforeSharing)
+	--d( ADDON .. ": delay before sharing " .. delayBeforeSharing)
 
 	if doSharing and supported then
 		zo_callLater( SCQ.TargetedQuestSharing( GetUnitZoneIndex("player") ), delayBeforeSharing )
@@ -50,7 +53,7 @@ function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , memberCharacterName, memberDisplayNam
 end
 
 -- API 100026	EVENT_QUEST_ADDED (number eventCode, number journalIndex, string questName, string objectiveName)
-function SCQ.EVENT_QUEST_ADDED (_, journalIndex, questName, objectiveName)
+function SCQ.SCQ_QUEST_ADDED (_, journalIndex, questName, objectiveName)
 	if GetIsQuestSharable(journalIndex) then
 		doSharing = true
 	end
@@ -62,17 +65,13 @@ function SCQ.EVENT_QUEST_ADDED (_, journalIndex, questName, objectiveName)
 end
 
 --	EVENT_GROUP_MEMBER_CONNECTED_STATUS (number eventCode, string unitTag, boolean isOnline)
-function SCQ.EVENT_GROUP_MEMBER_CONNECTED_STATUS (_, string_unitTag, boolean_isOnline)
+function SCQ.SCQ_GROUP_MEMBER_CONNECTED_STATUS (_, string_unitTag, boolean_isOnline)
 	SCQ.fixMembersInSupportRange()
 end
 
 --	EVENT_PLAYER_ACTIVATED (number eventCode, boolean initial)
-function SCQ.EVENT_PLAYER_ACTIVATED(_, _)
+function SCQ.SCQ_PLAYER_ACTIVATED(_, _)
 	SCQ.fixMembersInSupportRange()
-	if doSharing and supported then
-		zo_callLater( SCQ.TargetedQuestSharing( GetUnitZoneIndex("player") ), delayBeforeSharing )
-		doSharing = false
-	end
 end
 
 --	Inefficient support range checker that needs to be done when exiting loading screen as EVENT_GROUP_SUPPORT_RANGE_UPDATE is not updated then
@@ -103,9 +102,9 @@ end
 
 -- Following keeps track of the members that are in support range
 -- 100028 EVENT_GROUP_SUPPORT_RANGE_UPDATE (number eventCode, string unitTag, boolean status)
-function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
+function SCQ.SCQ_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 
-	if not membersSupporting or not membersSupporting[0] then
+	if not membersSupporting then
 		membersSupporting = {}
 		membersSupporting[0] = 0
 	end
@@ -168,7 +167,7 @@ end	-- Quests in target zone sharing
 
 
 -- 100028 EVENT_GROUP_MEMBER_LEFT (number eventCode, string memberCharacterName, GroupLeaveReason reason, boolean isLocalPlayer, boolean isLeader, string memberDisplayName, boolean actionRequiredVote)
-function SCQ.EVENT_GROUP_MEMBER_LEFT(_ , memberCharacterName, GroupLeaveReason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
+function SCQ.SCQ_GROUP_MEMBER_LEFT(_ , memberCharacterName, GroupLeaveReason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
 
 	if isLocalPlayer then
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_QUEST_ADDED)
@@ -177,8 +176,9 @@ function SCQ.EVENT_GROUP_MEMBER_LEFT(_ , memberCharacterName, GroupLeaveReason, 
 		d( ADDON .. ": Now soloing.")
 	else
 		SCQ.fixMembersInSupportRange()
-		d( ADDON .. ": " .. ZO_LinkHandler_CreateLinkWithoutBrackets(memberDisplayName, nil, CHARACTER_LINK_TYPE, memberDisplayName) .. " left the group with " .. zo_strformat("<<1>>", memberCharacterName)	)
+		d( ADDON .. ": " .. ZO_LinkHandler_CreateLinkWithoutBrackets(memberDisplayName, nil, CHARACTER_LINK_TYPE, memberDisplayName) .. " left the group with " .. zo_strformat("<<1>>", memberCharacterName) .. " making us " .. zo_strformat("<<n:1>>", GetGroupSize() ) .. " undaunted adventurers" )
 	end
+	d( ADDON .. ": EVENT_GROUP_MEMBER_LEFT fired" )
 end
 
 -- Kill the add-on if needed for some reason. Also a list of stuff that needs to be remembered.

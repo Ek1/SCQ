@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.3.191103",
+	VERSION = "1.3.191103.2302",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -47,7 +47,7 @@ function SCQ.SCQ_GROUP_MEMBER_JOINED(_ , memberCharacterName, memberDisplayName,
 	--d( ADDON .. ": delay before sharing " .. delayBeforeSharing)
 
 	if doSharing and supported then
-		zo_callLater( SCQ.TargetedQuestSharing( GetUnitZoneIndex("player") ), delayBeforeSharing )
+		zo_callLater( SCQ.QuestSharingAtPlayerZone, delayBeforeSharing )
 		doSharing = false
 	end
 end
@@ -59,7 +59,7 @@ function SCQ.SCQ_QUEST_ADDED (_, journalIndex, questName, objectiveName)
 	end
 
 	if doSharing and supported then
-		zo_callLater( SCQ.TargetedQuestSharing( GetUnitZoneIndex("player" ) ), delayBeforeSharing )
+		zo_callLater( SCQ.QuestSharingAtPlayerZone, delayBeforeSharing )
 		doSharing = true
 	end
 end
@@ -136,6 +136,11 @@ function SCQ.SCQ_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 		SCQ.TargetedQuestSharing( GetUnitZoneIndex("player") )
 		doSharing = false
 	end
+end
+
+-- Wrapping for zo_callLater function.
+function SCQ.QuestSharingAtPlayerZone()
+	SCQ.TargetedQuestSharing( GetUnitZoneIndex("player" )
 end
 
 -- Quests in target zone sharing

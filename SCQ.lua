@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.3.191103.2302",
+	VERSION = "1.3.191105.0246",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -71,7 +71,7 @@ end
 
 --	EVENT_PLAYER_ACTIVATED (number eventCode, boolean initial)
 function SCQ.SCQ_PLAYER_ACTIVATED(_, _)
-	SCQ.fixMembersInSupportRange()
+	zo_callLater( SCQ.fixMembersInSupportRange(), delayBeforeSharing )
 end
 
 --	Inefficient support range checker that needs to be done when exiting loading screen as EVENT_GROUP_SUPPORT_RANGE_UPDATE is not updated then
@@ -140,7 +140,7 @@ end
 
 -- Wrapping for zo_callLater function.
 function SCQ.QuestSharingAtPlayerZone()
-	SCQ.TargetedQuestSharing( GetUnitZoneIndex("player" )
+	SCQ.TargetedQuestSharing( GetUnitZoneIndex("player" ) )
 end
 
 -- Quests in target zone sharing

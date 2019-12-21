@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.3.191110",
+	VERSION = "1.3.191221",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -18,8 +18,6 @@ local delayBeforeSharing = 500
 function SCQ.Start()
 
 	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_JOINED,	SCQ.EVENT_GROUP_MEMBER_JOINED)
-	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED,	SCQ.EVENT_PLAYER_ACTIVATED)
-	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT,	SCQ.EVENT_GROUP_MEMBER_LEFT)
 	EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_CONNECTED_STATUS,	SCQ.EVENT_GROUP_MEMBER_CONNECTED_STATUS)
 
 	supported = false
@@ -30,23 +28,23 @@ end
 -- 100028 EVENT_GROUP_MEMBER_JOINED (number eventCode, string memberCharacterName, string memberDisplayName, boolean isLocalPlayer)
 function SCQ.EVENT_GROUP_MEMBER_JOINED(_ , memberCharacterName, memberDisplayName, isLocalPlayer)
 
-	supported = false
-
 	if isLocalPlayer then
 		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_SUPPORT_RANGE_UPDATE,	SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE)
 		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_QUEST_ADDED,	SCQ.EVENT_QUEST_ADDED)
 		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED,	SCQ.EVENT_PLAYER_ACTIVATED)
 		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_PLAYER_DEACTIVATED,	SCQ.EVENT_PLAYER_DEACTIVATED)
+		EVENT_MANAGER:RegisterForEvent(ADDON, EVENT_GROUP_MEMBER_LEFT,	SCQ.EVENT_GROUP_MEMBER_LEFT)
 		d( ADDON .. ": You joined a group with Your " .. zo_strformat("<<1>>", memberCharacterName) .. " consisting of " .. zo_strformat("<<n:1>>", GetGroupSize() ) .. " brave adventurers  ")
+		membersSupporting = {}
+		membersSupporting[0] = 0
 	else
 		d( ADDON .. ": " .. ZO_LinkHandler_CreateLinkWithoutBrackets(memberDisplayName, nil, CHARACTER_LINK_TYPE, memberDisplayName) .. " joined the group with " .. zo_strformat("<<1>>", memberCharacterName) .. " making us " .. zo_strformat("<<n:1>>", GetGroupSize() ) .. " undaunted adventurers" )
 	end
 
 	doSharing = true
 
-	SCQ.fixMembersInSupportRange()
+--	SCQ.fixMembersInSupportRange()
 
-	delayBeforeSharing = groupMembers[GetDisplayName()] * GetLatency()	-- Use latency as multiplier to push back sharing to have somekind of logic what quest comletion to have among members. With 150ms latency it means last member in party waits for 3,6 seconds until sharing quests.
 	--d( ADDON .. ": delay before sharing " .. delayBeforeSharing)
 
 	if doSharing and supported then
@@ -94,7 +92,7 @@ function SCQ.fixMembersInSupportRange()
 		local focusedGroupTag = GetGroupUnitTagByIndex(i)
 		local focusedUnitDisplayName = GetUnitDisplayName( focusedGroupTag )
 
-		if IsUnitInGroupSupportRange( focusedGroupTag ) then
+		if IsUnitInGroupSupportRange( focusedGroupTag ) and not IsUnitPlayer(focusedGroupTag) then
 			membersSupporting[0] = membersSupporting[0] + 1
 			membersSupporting[membersSupporting[0]] = focusedUnitDisplayName
 		end
@@ -102,11 +100,14 @@ function SCQ.fixMembersInSupportRange()
 		groupMembers[focusedUnitDisplayName] = i
 	end
 
-	if 1 < membersSupporting[0] then
+	if 0 < membersSupporting[0] then
 		supported = true
 	else 
 		supported = false
 	end
+
+	local orderInGroup = groupMembers[GetDisplayName()] or GetGroupSize()
+	delayBeforeSharing = orderInGroup * GetLatency()	-- Use latency as multiplier to push back sharing to have somekind of logic what quest comletion to have among members. With 150ms latency it means last member in party waits for 3,6 seconds until sharing quests.
 end
 
 -- Following keeps track of the members that are in support range
@@ -122,17 +123,17 @@ function SCQ.EVENT_GROUP_SUPPORT_RANGE_UPDATE(_, unitTag, isSupporting)
 	if isSupporting then
 		membersSupporting[0] = 1 + membersSupporting[0] or 2
 		--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE updated to " .. membersSupporting[0] .. "/" .. GetGroupSize() .. " party members in support range")
-		if GetGroupSize() < membersSupporting[0] then	-- There can't be more people supporting than there are members in group
+--[[ 		if GetGroupSize() < membersSupporting[0] then	-- There can't be more people supporting than there are members in group
 			membersSupporting[0] = GetGroupSize() or 2
 			--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE fixed to " .. membersSupporting[0] .. "/" .. GetGroupSize() .. " party members in support range")
-		end
+		end ]]
 	else
 		membersSupporting[0] = membersSupporting[0] - 1 or 1
 		--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE updated to " .. membersSupporting[0] .. "/" .. group[0] .. " party members in support range")
-		if membersSupporting[0] < 1 then	-- Player is always in support range of himself
+--[[ 		if membersSupporting[0] < 1 then	-- Player is always in support range of himself
 			membersSupporting[0] = 1
 			--d( SCQ.TITLE .. ": EVENT_GROUP_SUPPORT_RANGE_UPDATE fixed to " .. membersSupporting[0] .. "/" .. group[0] .. " party members in support range")
-		end
+		end ]]
 	end
 
 	if 1 < membersSupporting[0] then
@@ -189,11 +190,13 @@ function SCQ.EVENT_GROUP_MEMBER_LEFT(_ , memberCharacterName, GroupLeaveReason, 
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_PLAYER_ACTIVATED)
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_PLAYER_DEACTIVATED)
 		d( ADDON .. ": Now soloing.")
+		supported = false
+		membersSupporting = {}
+		membersSupporting[0] = 0
 	else
 		SCQ.fixMembersInSupportRange()
 		d( ADDON .. ": " .. ZO_LinkHandler_CreateLinkWithoutBrackets(memberDisplayName, nil, CHARACTER_LINK_TYPE, memberDisplayName) .. " left the group with " .. zo_strformat("<<1>>", memberCharacterName) .. " making us " .. zo_strformat("<<n:1>>", GetGroupSize() ) .. " undaunted adventurers" )
 	end
-	d( ADDON .. ": EVENT_GROUP_MEMBER_LEFT fired" )
 end
 
 -- Kill the add-on if needed for some reason. Also a list of stuff that needs to be remembered.

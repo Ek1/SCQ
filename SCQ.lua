@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.3.191221",
+	VERSION = "1.3.200324",
 	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -180,6 +180,27 @@ function SCQ.TargetedQuestSharing( targetZoneIndex, questRepeatTypeFromZeroToTwo
 	end
 end	-- Quests in target zone sharing
 
+-- Slashcommand enabled for the add-on 
+function SCQSlashShare( arg)
+	
+	-- numberic calls from 0 to 3 (100030: QUEST_REPEAT_MAX_VALUE) share those type quests 
+	if type(arg) == "number" and
+		QUEST_REPEAT_MIN_VALUE <= arg and
+		arg <= QUEST_REPEAT_MAX_VALUE then
+		SCQ.TargetedQuestSharing( GetUnitZoneIndex("player", arg ) )
+	-- if there is no arg, share all local quests
+	elseif not arg then
+		SCQ.TargetedQuestSharing( GetUnitZoneIndex("player") )
+	-- incase arg is not number then the user most likely wants help
+	else
+		d("/sql      Share all shareable quests in Your location")
+		d("/sql <#>  Share shareable quests in Your location that are type #")
+		d("0 = Can't re repeated aka story quests")
+		d("1 = Pledge")
+		d("2 = Daily")
+		d("3 = Repeatable")
+	end
+end
 
 -- 100028 EVENT_GROUP_MEMBER_LEFT (number eventCode, string memberCharacterName, GroupLeaveReason reason, boolean isLocalPlayer, boolean isLeader, string memberDisplayName, boolean actionRequiredVote)
 function SCQ.EVENT_GROUP_MEMBER_LEFT(_ , memberCharacterName, GroupLeaveReason, isLocalPlayer, isLeader, memberDisplayName, actionRequiredVote)
@@ -222,8 +243,9 @@ function SCQ.GotLoaded(_, loadedAddOnName)
 	--	Seems it is our time so lets stop listening load trigger and initialize the add-on
 		d( SCQ.TITLE .. " (" .. ADDON .. ")".. ": load order " ..  loadOrder .. ", starting")
 		EVENT_MANAGER:UnregisterForEvent(ADDON, EVENT_ADD_ON_LOADED)
-		ZO_CreateStringId("SI_BINDING_NAME_EVENT_SHARE_MY_ZONES_QUESTS", "Share quests in your zone")
+		ZO_CreateStringId("SI_BINDING_NAME_SCQ_SHARE_MY_ZONES_QUESTS", "Share quests in your zone")
 		SCQ.Start()
+		SLASH_COMMANDS["/scq"] = SCQSlashShare
 	end
 	loadOrder = loadOrder + 1
 end

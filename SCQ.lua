@@ -2,8 +2,8 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "1.3.200324",
-	LIECENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
+	VERSION = "33.201103",
+	LICENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
 local ADDON = "SCQ"	-- Codereview friendly reference to this add-on.
@@ -153,6 +153,10 @@ function SCQ.QuestSharingAtPlayerZone()
 	SCQ.TargetedQuestSharing( GetUnitZoneIndex("player" ) )
 end
 
+-- summerset coffers
+-- |H1:item:165946:123:50:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h  |H1:item:138800:122:50:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0:0|h|h
+
+
 -- Quests in target zone sharing
 -- Optionally takes int_ZoneIndex and int_questRepeatType as arguments for more specific sahres
 function SCQ.TargetedQuestSharing( targetZoneIndex, questRepeatTypeFromZeroToTwo )
@@ -181,7 +185,7 @@ function SCQ.TargetedQuestSharing( targetZoneIndex, questRepeatTypeFromZeroToTwo
 end	-- Quests in target zone sharing
 
 -- Slashcommand enabled for the add-on 
-function SCQSlashShare( arg)
+function SCQ.SCQSlashShare( arg)
 	
 	-- numberic calls from 0 to 3 (100030: QUEST_REPEAT_MAX_VALUE) share those type quests 
 	if type(arg) == "number" and

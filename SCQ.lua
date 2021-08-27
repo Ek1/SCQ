@@ -2,7 +2,7 @@ SCQ = {
 	TITLE = "Share contributable quests",	-- Enduser friendly version of the add-on's name
 	AUTHOR = "Ek1",
 	DESCRIPTION = "Shares quests to party members that can contribute to the quest.",
-	VERSION = "33.201103",
+	VERSION = "101031.210827",
 	LICENSE = "BY-SA = Creative Commons Attribution-ShareAlike 4.0 International License",
 	URL = "https://github.com/Ek1/SCQ"
 }
@@ -159,11 +159,10 @@ end
 
 -- Quests in target zone sharing
 -- Optionally takes int_ZoneIndex and int_questRepeatType as arguments for more specific sahres
-function SCQ.TargetedQuestSharing( targetZoneIndex, questRepeatTypeFromZeroToTwo )
+function SCQ.TargetedQuestSharing( nillableTargetZoneIndex, questRepeatTypeFromZeroToTwo )
 
-	if targetZoneIndex == nil then
-		targetZoneIndex = GetUnitZoneIndex("player")	-- If not target was given, presume target is players zone
-	end
+	targetZoneIndex = nillableTargetZoneIndex or GetUnitZoneIndex("player")	-- If not target was given, presume target is the players zone
+
 	local questRepeatTypeMinimumToShare = questRepeatTypeFromZeroToTwo or 0	-- if no limit was given, presume everything is wanted
 
 	for i = 1, GetNumJournalQuests() do
